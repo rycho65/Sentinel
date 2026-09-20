@@ -1,0 +1,6 @@
+fastapi
+uvicorn[standard]
+pytest
+python-dotenv
+supabase
+psycopg2-binary

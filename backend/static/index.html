@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sentinel</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">&#9679;</span>
+      <div>
+        <h1>SENTINEL</h1>
+        <p class="subtitle">Hospital alert prioritization &mdash; simulation playback</p>
+      </div>
+    </div>
+    <div class="controls">
+      <label class="field" id="modeField">
+        <span>Mode</span>
+        <select id="modeSelect" class="btn">
+          <option value="fifo">Normal (FIFO)</option>
+          <option value="greedy">Greedy</option>
+          <option value="sentinel" selected>Sentinel</option>
+        </select>
+      </label>
+    </div>
+  </header>
+
+  <div class="scenario-bar">
+    <div class="scenario-presets">
+      <span class="scenario-label">Scenario</span>
+      <button class="btn preset-btn" data-preset="slow">Slow day</button>
+      <button class="btn preset-btn" data-preset="normal">Normal</button>
+      <button class="btn preset-btn" data-preset="rush">Rush</button>
+    </div>
+    <div class="controls scenario-fields">
+      <label class="field">
+        <span>Rooms</span>
+        <input id="roomsInput" class="btn nurses-input" type="number" min="5" max="300" value="100">
+      </label>
+      <label class="field">
+        <span>Nurses</span>
+        <input id="nursesInput" class="btn nurses-input" type="number" min="1" max="20" value="5">
+      </label>
+      <label class="field">
+        <span>Shift (hrs)</span>
+        <input id="shiftInput" class="btn nurses-input" type="number" min="1" max="12" value="5">
+      </label>
+      <label class="field">
+        <span>Pings/hr</span>
+        <input id="pingsMinInput" class="btn nurses-input small" type="number" min="1" max="200" value="20">
+        <span class="range-dash">&ndash;</span>
+        <input id="pingsMaxInput" class="btn nurses-input small" type="number" min="1" max="200" value="30">
+      </label>
+      <button id="applyBtn" class="btn btn-accent">Apply</button>
+    </div>
+  </div>
+
+  <div class="subbar">
+    <div class="view-toggle">
+      <button id="viewMapBtn" class="btn active">Floor map</button>
+      <button id="viewCompareBtn" class="btn">Compare</button>
+    </div>
+    <div class="controls">
+      <span class="clock" id="clock">t = 0m</span>
+      <button id="playBtn" class="btn">Play</button>
+      <select id="speedSelect" class="btn">
+        <option value="600">1x</option>
+        <option value="250" selected>3x</option>
+        <option value="80">8x</option>
+      </select>
+      <button id="resetBtn" class="btn btn-ghost">Reset</button>
+    </div>
+  </div>
+
+  <main class="layout">
+    <section id="mapView" class="map-layout">
+      <section id="sidePanel" class="panel side-panel">
+        <h2>Nurses</h2>
+        <div id="nurses" class="nurses"></div>
+
+        <h2 class="stats-heading">Totals</h2>
+        <div id="totals" class="stats"></div>
+
+        <h2 class="stats-heading">Wait time by severity</h2>
+        <div id="stats" class="stats"></div>
+
+        <h2 class="stats-heading" id="sentinelMetricsHeading" style="display:none;">Sentinel metrics</h2>
+        <div id="sentinelMetrics" class="stats"></div>
+      </section>
+
+      <section class="panel map-panel">
+        <h2>Floor map</h2>
+        <div class="floor" id="floor"></div>
+        <div class="legend">
+          <span><i class="dot sev-low"></i>1</span>
+          <span><i class="dot sev-mid"></i>2-4</span>
+          <span><i class="dot sev-high"></i>5-7</span>
+          <span><i class="dot sev-crit"></i>8-10</span>
+          <span><i class="dot nurse-dot-legend"></i>nurse</span>
+          <span><i class="dot escalated-legend"></i>escalated (waited too long)</span>
+        </div>
+      </section>
+    </section>
+
+    <section id="compareView" class="compare-view" style="display:none;">
+      <div class="panel compare-col compare-sentinel">
+        <h2 class="compare-title">SENTINEL <span id="sentinelBadge" class="badge"></span></h2>
+        <div class="floor floor-compare" id="floorSentinel"></div>
+        <div class="compare-stats-row">
+          <div>
+            <h3 class="stats-heading">Totals</h3>
+            <div id="totalsSentinel" class="stats"></div>
+          </div>
+          <div>
+            <h3 class="stats-heading">Wait by severity</h3>
+            <div id="statsSentinel" class="stats"></div>
+          </div>
+          <div>
+            <h3 class="stats-heading">Sentinel metrics</h3>
+            <div id="sentinelMetricsCompare" class="stats"></div>
+          </div>
+        </div>
+      </div>
+      <div class="panel compare-col compare-fifo">
+        <h2 class="compare-title">NORMAL (FIFO) <span id="fifoBadge" class="badge"></span></h2>
+        <div class="floor floor-compare" id="floorFifo"></div>
+        <div class="compare-stats-row">
+          <div>
+            <h3 class="stats-heading">Totals</h3>
+            <div id="totalsFifo" class="stats"></div>
+          </div>
+          <div>
+            <h3 class="stats-heading">Wait by severity</h3>
+            <div id="statsFifo" class="stats"></div>
+          </div>
+        </div>
+      </div>
+      <div class="legend compare-legend">
+        <span><i class="dot sev-low"></i>1</span>
+        <span><i class="dot sev-mid"></i>2-4</span>
+        <span><i class="dot sev-high"></i>5-7</span>
+        <span><i class="dot sev-crit"></i>8-10</span>
+        <span><i class="dot nurse-dot-legend"></i>nurse</span>
+        <span><i class="dot escalated-legend"></i>escalated (waited too long)</span>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
