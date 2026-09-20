@@ -11,6 +11,12 @@ let pollTimer = null;
 let povTimer = null;
 let queueRenderLocked = false;
 
+// Navigating to /index.html and back (e.g. via the nav links) is a full page
+// load, so these two lines are what let an in-progress shift survive that -
+// otherwise every trip back to Live Product would hit the login screen again.
+const SHIFT_STORAGE_KEY = "sentinel_shift_id";
+const DOCTOR_STORAGE_KEY = "sentinel_doctor_name";
+
 // ---- element refs ----
 
 const views = {
@@ -90,7 +96,9 @@ function showView(name) {
 
 loginBtn.addEventListener("click", () => {
   // Hackathon-level auth: any credentials advance. Nothing is sent to the backend.
-  headerDoctorName.textContent = `Dr. ${loginUser.value.trim() || "Coordinator"}`;
+  const name = loginUser.value.trim() || "Coordinator";
+  headerDoctorName.textContent = `Dr. ${name}`;
+  sessionStorage.setItem(DOCTOR_STORAGE_KEY, name);
   showView("setup");
   renderNurseRows();
 });
@@ -122,6 +130,7 @@ startShiftBtn.addEventListener("click", async () => {
 
   const shift = await postJSON("/api/live/shift", { total_beds: totalBeds, nurses });
   shiftId = shift.shift_id;
+  sessionStorage.setItem(SHIFT_STORAGE_KEY, shiftId);
   mode = shift.mode;
   modeToggleBtn.textContent = mode.toUpperCase();
   shiftSubtitle.textContent = `${totalBeds} beds · ${nurses.length} nurses`;
@@ -400,6 +409,8 @@ endShiftBtn.addEventListener("click", () => {
   stopPolling();
   shiftId = null;
   lastState = null;
+  sessionStorage.removeItem(SHIFT_STORAGE_KEY);
+  sessionStorage.removeItem(DOCTOR_STORAGE_KEY);
   showView("login");
 });
 
@@ -474,4 +485,35 @@ povDoneBtn.addEventListener("click", async () => {
 
 // ---- init ----
 
-showView("login");
+// If a shift was already started earlier in this browser session (e.g. the
+// coordinator navigated away to the Simulation Benchmark page and came back
+// via the nav link), reconnect to it instead of asking them to log in again.
+// Falls back to the normal login screen if there's nothing to restore, or
+// the stored shift no longer exists on the server (e.g. after a restart).
+async function restoreSession() {
+  const storedName = sessionStorage.getItem(DOCTOR_STORAGE_KEY);
+  if (storedName) headerDoctorName.textContent = `Dr. ${storedName}`;
+
+  const storedShiftId = sessionStorage.getItem(SHIFT_STORAGE_KEY);
+  if (!storedShiftId) {
+    showView("login");
+    return;
+  }
+
+  try {
+    const state = await getJSON(`/api/live/state?shift_id=${storedShiftId}`);
+    shiftId = storedShiftId;
+    totalBeds = state.total_beds;
+    mode = state.mode;
+    modeToggleBtn.textContent = mode.toUpperCase();
+    shiftSubtitle.textContent = `${state.total_beds} beds · ${state.nurses.length} nurses`;
+    buildFloor();
+    showView("command");
+    startPolling();
+  } catch (err) {
+    sessionStorage.removeItem(SHIFT_STORAGE_KEY);
+    showView("login");
+  }
+}
+
+restoreSession();

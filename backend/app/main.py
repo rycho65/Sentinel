@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Literal
 
 from fastapi import FastAPI, Query
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.live_api import router as live_router
@@ -64,6 +65,15 @@ def get_simulation(
 
 
 FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
+
+
+@app.get("/", include_in_schema=False)
+def root():
+    # The bare root should land on the Live Product login screen, not the
+    # Simulation Benchmark page that StaticFiles(html=True) would otherwise
+    # serve by default for "/".
+    return FileResponse(FRONTEND_DIR / "product.html")
+
 
 app.mount(
     "/",
