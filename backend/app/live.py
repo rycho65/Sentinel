@@ -6,14 +6,20 @@ highest-severity dispatch) is the existing Sentinel backend
 Nothing in this file reimplements any of that; Auto Mode IS that backend,
 just driven by one event at a time instead of a replayed batch.
 
-In-memory only for now - Supabase persistence is intentionally deferred
-until this shape has stabilized (see app/database.py)."""
+The in-memory `_sessions` dict below is still what the scheduler actually
+runs on - every mutation here also gets mirrored into Supabase via
+app/db_sync.py, purely so the data durably exists and is queryable there.
+That mirroring never influences a scheduling decision; it only observes
+results this file already computed (see app/db_sync.py's own docstring for
+what is and isn't covered - notably, this is write-through only, not
+restart recovery)."""
 
 import random
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
 
+from app import db_sync
 from app.incidents import Incident, IncidentManager
 from app.models import RawPing
 from app.scheduler import pick_sentinel
@@ -115,6 +121,7 @@ class LiveSession:
             event.suggested_severity = calculate_severity(vitals)
 
         self.pending[event.id] = event
+        db_sync.sync_pending_event(self, event)
         return event
 
     def finalize_event(
@@ -137,6 +144,8 @@ class LiveSession:
         )
         incident = self.manager.process_ping(ping, now)
         event.status = "resolved"
+        db_sync.sync_pending_event(self, event)
+        db_sync.sync_incident(self, incident)  # covers both a brand-new incident and a consolidated merge
         return incident
 
     # ---- assignment / task lifecycle ----
@@ -169,6 +178,7 @@ class LiveSession:
         chosen = pick_sentinel(eligible)  # the SAME picker Sentinel simulation mode dispatches with
         nurse.status = "assigned"
         nurse.assigned_incident_id = chosen.incident_id
+        db_sync.sync_nurse(self, nurse)
         return chosen
 
     def manual_assign(self, nurse_id: str, incident_id: str, now: datetime) -> Incident:
@@ -187,6 +197,7 @@ class LiveSession:
 
         nurse.status = "assigned"
         nurse.assigned_incident_id = incident.incident_id
+        db_sync.sync_nurse(self, nurse)
         return incident
 
     def start_task(self, nurse_id: str, now: datetime) -> Incident:
@@ -197,6 +208,8 @@ class LiveSession:
         self.manager.dispatch(incident, now)   # unmodified - also generates service_time ("goal minutes")
         nurse.status = "busy"
         nurse.current_room = incident.room
+        db_sync.sync_incident(self, incident)
+        db_sync.sync_nurse(self, nurse)
         return incident
 
     def complete_task(self, nurse_id: str, now: datetime) -> Incident:
@@ -208,12 +221,16 @@ class LiveSession:
         nurse.status = "available"
         nurse.current_room = None
         nurse.assigned_incident_id = None
+        db_sync.sync_incident(self, incident)
+        db_sync.sync_nurse(self, nurse)
         if self.mode == "auto":
-            self.assign_next(nurse_id, now)    # work-conserving - Auto Mode only
+            self.assign_next(nurse_id, now)    # work-conserving - Auto Mode only (syncs the nurse again itself)
         return incident
 
     def tick(self, now: datetime) -> None:
-        self.manager.refresh_all(now)   # starvation aging - unmodified, runs regardless of mode
+        changed = self.manager.refresh_all(now)   # starvation aging - unmodified, runs regardless of mode
+        for incident in changed:
+            db_sync.sync_incident(self, incident)
         if self.mode == "auto":
             for nurse_id in list(self.nurses):
                 self.assign_next(nurse_id, now)
@@ -239,6 +256,9 @@ def create_session(
         seed=seed if seed is not None else random.randint(0, 1_000_000),
     )
     _sessions[shift_id] = session
+    db_sync.sync_shift(session)
+    for nurse in session.nurses.values():
+        db_sync.sync_nurse(session, nurse)
     return session
 
 

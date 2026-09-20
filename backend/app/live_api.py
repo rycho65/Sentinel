@@ -7,7 +7,7 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
-from app import live
+from app import db_sync, live
 from app.incidents import Incident
 from app.starvation import bucket_for
 
@@ -274,4 +274,5 @@ def set_mode(body: ModeRequest, shift_id: str = Query(...)):
     if body.mode not in ("manual", "auto"):
         raise HTTPException(status_code=400, detail="mode must be manual|auto")
     session.mode = body.mode
+    db_sync.sync_shift(session)
     return {"mode": session.mode}

@@ -102,9 +102,16 @@ class IncidentManager:
     def active_waiting(self) -> list[Incident]:
         return [i for i in self._active.values() if i.status == "waiting"]
 
-    def refresh_all(self, now: datetime) -> None:
+    def refresh_all(self, now: datetime) -> list[Incident]:
+        """Advances starvation aging for every active incident. Returns
+        whichever ones actually escalated this call (most calls: none) -
+        purely observational, callers that ignore the return value (as every
+        caller did before this) behave identically to before."""
+        changed = []
         for incident in list(self._active.values()):
-            incident.refresh_starvation(now)
+            if incident.refresh_starvation(now) is not None:
+                changed.append(incident)
+        return changed
 
     def dispatch(self, incident: Incident, now: datetime) -> None:
         incident.status = "in_progress"
