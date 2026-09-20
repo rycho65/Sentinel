@@ -1,4 +1,5 @@
 from dataclasses import asdict
+from pathlib import Path
 from typing import Literal
 
 from fastapi import FastAPI, Query
@@ -62,4 +63,10 @@ def get_simulation(
     }
 
 
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
+FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
+
+app.mount(
+    "/",
+    StaticFiles(directory=str(FRONTEND_DIR), html=True),
+    name="static",
+)
