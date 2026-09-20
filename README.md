@@ -2,75 +2,228 @@ Sentinel
 
 An operating-system-inspired scheduler for hospital alert prioritization.
 
-Sentinel is a full-stack hospital operations simulator that explores a simple idea:
+Sentinel is a full-stack hospital operations simulator that explores a simple question:
 
 What if hospital alerts were scheduled like processes in an operating system?
 
 Instead of allocating CPU time to processes, Sentinel allocates limited nursing attention to incoming clinical events.
 
-Note: Sentinel is an educational hackathon prototype built with synthetic data. It is not intended for real-world clinical decision-making.
+Overview
+
+Sentinel models a hospital environment with:
+
+incoming clinical alerts
+
+limited nursing resources
+
+dynamic patient severity
+
+duplicate/noisy events
+
+queueing and prioritization
+
+starvation prevention through aging
+
+It also includes a simulation environment that compares Sentinel's scheduling strategy against a traditional FIFO (First-In, First-Out) scheduler under the same synthetic workload.
+
+Disclaimer: Sentinel is an educational hackathon prototype built using synthetic data. It is not intended for real-world clinical decision-making.
 
 Inspiration
 
 As a pre-med student, I have spent considerable time in hospitals, especially emergency rooms. One thing I noticed was that available resources sometimes could not keep up with patient volume.
 
-This week in my Operating Systems class, we learned about process scheduling. That inspired me to build an operating-system-style scheduler for hospital alerts.
+This week in my Operating Systems class, we learned about process schedulers. That led to the idea behind Sentinel:
 
-What It Does
+Could operating-system scheduling concepts be applied to hospital attention management?
 
-Sentinel has two main modes:
+Features
 
-Manual Mode — users can manually assign nurses to incoming incidents.
+Live Product
 
-Sentinel Mode — the scheduler suggests severity based on synthetic vitals and automatically prioritizes work for available nurses.
+Sentinel supports two operating modes:
 
-The Simulation tab compares Sentinel against a traditional FIFO (First-In, First-Out) scheduler under the same synthetic workload.
+Mode
 
-How It Works
+Description
 
-The backend is written in Python using FastAPI.
+Manual Mode
 
-The core of the project is a custom scheduler that handles:
+Users manually assign nurses to incoming incidents.
 
-Severity-based prioritization
+Sentinel Mode
 
-Nurse assignment
+Sentinel suggests severity from synthetic vitals and intelligently prioritizes available work.
 
-Duplicate alert consolidation
+The dashboard displays information such as:
 
-Aging to prevent starvation
+room status
 
-Clinical deterioration over time
+nurse availability
 
-The synthetic workload includes randomly generated vitals, duplicate/noisy alerts, variable service times, and deterioration when incidents wait too long.
+active incidents
 
-The frontend is built with:
+queue state
 
-HTML
+completed incidents
 
-CSS
+suggested severity
 
-JavaScript
+escalation behavior
 
-Persistent data is stored with Supabase, and the application is deployed on Render.
+Simulation
 
-Tech Stack
+The simulation tab compares:
 
-Backend: Python, FastAPI
+Sentinel Scheduler
+vs.
+Traditional FIFO Scheduler
 
-Frontend: HTML, CSS, JavaScript
+Both systems receive the same synthetic workload so their behavior can be compared directly.
 
-Database: Supabase
+Simulation controls include:
 
-Deployment: Render
+number of rooms
+
+number of nurses
+
+shift length
+
+incoming pings per hour
+
+workload scenario
+
+playback speed
+
+Available scenarios:
+
+Slow Day
+
+Normal
+
+Rush
 
 Scheduler Design
 
-The first version used a greedy strategy that always prioritized the most severe available incident.
+The first version of Sentinel used a simple greedy strategy:
 
-That created a problem: lower-priority incidents could wait indefinitely.
+Always process the highest-severity available incident first.
 
-To address this, Sentinel adds aging, which increases priority when an incident waits too long. Sentinel also consolidates duplicate alerts so repeated signals do not unnecessarily consume nursing attention.
+That worked well for critical incidents, but it created a major problem:
+
+Lower-priority incidents could wait indefinitely.
+
+This is the classic scheduling problem of starvation.
+
+To address it, Sentinel adds several mechanisms.
+
+Severity-Based Priority
+
+Higher-severity incidents are prioritized over lower-severity incidents.
+
+Aging
+
+If an incident waits too long, its priority increases.
+
+Initial severity
+      ↓
+Waits too long
+      ↓
+Priority increases
+      ↓
+Eventually receives attention
+
+This prevents lower-priority incidents from being permanently ignored.
+
+Duplicate Consolidation
+
+Synthetic monitoring events can contain repeated alerts for the same underlying issue.
+
+Rather than treating every duplicate alert as an independent job, Sentinel consolidates them into a single incident.
+
+Clinical Deterioration
+
+Some synthetic patients worsen when left unattended.
+
+Green → Yellow → Orange → Red
+
+This creates a dynamic scheduling environment rather than a static queue.
+
+Synthetic Data
+
+Sentinel does not use real patient data.
+
+The simulator generates synthetic events with:
+
+randomized vital signs
+
+severity levels
+
+variable nurse-service times
+
+duplicate alerts
+
+false/noisy alerts
+
+deterioration over time
+
+rare long-duration edge cases
+
+Each priority group has an expected amount of nurse time, while a small percentage of cases take abnormally long to simulate unpredictable workloads.
+
+Tech Stack
+
+Layer
+
+Technology
+
+Backend
+
+Python, FastAPI
+
+Frontend
+
+HTML, CSS, JavaScript
+
+Database
+
+Supabase
+
+Deployment
+
+Render
+
+Core Logic
+
+Custom scheduler + simulation engine
+
+Architecture
+
+┌──────────────────────────────┐
+│           Frontend           │
+│      HTML / CSS / JS         │
+└──────────────┬───────────────┘
+               │
+           HTTP / API
+               │
+┌──────────────▼───────────────┐
+│           FastAPI            │
+│        Python Backend        │
+└──────────────┬───────────────┘
+               │
+┌──────────────▼───────────────┐
+│      Sentinel Scheduler      │
+│                              │
+│  • Severity prioritization   │
+│  • Aging                     │
+│  • Duplicate consolidation   │
+│  • Nurse assignment          │
+│  • Clinical deterioration    │
+└──────────────┬───────────────┘
+               │
+┌──────────────▼───────────────┐
+│           Supabase           │
+│       Persistent Storage     │
+└──────────────────────────────┘
 
 Project Structure
 
@@ -80,72 +233,163 @@ Sentinel/
 │   ├── tests/
 │   ├── supabase/
 │   └── requirements.txt
+│
 ├── frontend/
 │   ├── index.html
 │   ├── product.html
 │   ├── app.js
 │   ├── product.js
 │   └── style.css
+│
 ├── README.md
 └── .gitignore
 
 Running Locally
 
+1. Clone the repository
+
 git clone https://github.com/rycho65/Sentinel.git
 cd Sentinel
+
+2. Install backend dependencies
+
 pip install -r backend/requirements.txt
+
+3. Configure environment variables
+
+Create your local environment file and add the required Supabase credentials.
+
+Example:
+
+SUPABASE_URL=your_supabase_url
+SUPABASE_KEY=your_supabase_key
+
+Do not commit your .env file.
+
+4. Start the application
+
 uvicorn app.main:app --app-dir backend --reload
 
-Configure your Supabase environment variables before starting the app.
+Then open the local URL shown by Uvicorn, typically:
+
+http://127.0.0.1:8000
 
 Challenges
 
-The biggest challenge was designing the scheduler itself.
+Preventing Starvation
 
-I initially used a greedy algorithm, but lower-priority incidents waited too long. I then added aging to prevent starvation and duplicate consolidation to handle repeated/noisy alerts.
+My original greedy approach favored high-severity incidents too aggressively.
 
-A large part of the project involved learning scheduling concepts while implementing them.
+Lower-priority patients could wait for far too long, so I added aging to progressively increase their priority.
 
-What I Learned
+Handling Alert Noise
 
-This project helped me learn about:
+The synthetic workload also contains duplicate and noisy events.
 
-Greedy algorithms
+Sentinel consolidates repeated alerts before they unnecessarily consume nursing attention.
 
-Priority scheduling
+Learning While Building
+
+I had only recently learned about operating-system schedulers before starting this project, so a large portion of the build involved learning concepts while implementing them.
+
+Topics I had to learn or apply included:
+
+greedy algorithms
+
+priority scheduling
 
 FIFO scheduling
 
-Starvation
+starvation
 
-Aging
+aging
 
-FastAPI
+process-like state representation
+
+simulation design
+
+What I'm Proud Of
+
+The scheduler is the core accomplishment of the project.
+
+What began as a simple greedy algorithm evolved into a system that handles:
+
+priority
+
+constrained resources
+
+starvation
+
+aging
+
+duplicate events
+
+deterioration
+
+variable service times
+
+I was also able to turn the scheduler into a complete interactive full-stack web application and deploy it.
+
+What I Learned
+
+Sentinel helped me connect concepts from operating systems, algorithms, and full-stack development.
+
+I gained hands-on experience with:
+
+scheduling algorithms
+
+backend development
 
 REST APIs
 
-Full-stack development
+FastAPI
 
-Databases
+frontend development
 
-Deployment
+JavaScript
+
+databases
+
+deployment
+
+simulation design
+
+full-stack application architecture
 
 Future Work
 
-If I had more time, I would add individual nurse accounts so each nurse could see their own assignments instead of only the manager-facing dashboard.
+The current application primarily shows the manager / operations view.
 
-Other possible additions include:
+A future version could give each nurse an individual sign-in and dashboard showing:
 
-Multiple hospital units
+assigned incidents
 
-Nurse specialization
+room
 
-Shift changes
+severity
 
-More realistic workload distributions
+current workload
 
-Historical analytics
+assignment notifications
+
+incident completion controls
+
+Other possible extensions include:
+
+multiple hospital units
+
+nurse specialization
+
+shift changes
+
+additional scheduling strategies
+
+more realistic workload distributions
+
+historical analytics
 
 Individual Contribution
 
 Sentinel was built as a solo project.
+
+I designed and implemented the scheduler, simulation environment, backend, frontend, database integration, and deployment.
