@@ -4,10 +4,12 @@ from typing import Literal
 from fastapi import FastAPI, Query
 from fastapi.staticfiles import StaticFiles
 
+from app.live_api import router as live_router
 from app.simulate import compute_metrics, run
 from app.workload import generate_workload
 
 app = FastAPI(title="Sentinel")
+app.include_router(live_router)
 
 SCENARIO_SEED = 100  # fixed so every mode/knob combination replays the same underlying patients
 

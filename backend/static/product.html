@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sentinel — Live</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ============ LOGIN ============ -->
+  <section id="loginView" class="auth-view">
+    <div class="auth-card">
+      <div class="brand-mark">&#9679;</div>
+      <h1>SENTINEL</h1>
+      <label>Username <input id="loginUser" type="text" value="coordinator"></label>
+      <label>Password <input id="loginPass" type="password" value="••••••••"></label>
+      <button id="loginBtn" class="btn btn-accent">LOGIN</button>
+    </div>
+  </section>
+
+  <!-- ============ SHIFT SETUP ============ -->
+  <section id="setupView" class="auth-view" hidden>
+    <div class="auth-card setup-card">
+      <h2>Shift Setup</h2>
+      <label>How many beds are being managed today?
+        <input id="setupBeds" type="number" min="1" max="300" value="20">
+      </label>
+      <label>How many nurses are on shift?
+        <input id="setupNurseCount" type="number" min="1" max="20" value="3">
+      </label>
+      <div id="nurseRows" class="nurse-rows"></div>
+      <button id="startShiftBtn" class="btn btn-accent">START SHIFT</button>
+    </div>
+  </section>
+
+  <!-- ============ COMMAND CENTER ============ -->
+  <section id="commandView" class="command-view" hidden>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark">&#9679;</span>
+        <div>
+          <h1>SENTINEL</h1>
+          <p class="subtitle" id="shiftSubtitle">Command Center</p>
+        </div>
+      </div>
+      <div class="controls">
+        <span class="field"><span>Mode</span>
+          <button id="modeToggleBtn" class="btn btn-accent">AUTO</button>
+        </span>
+        <button id="injectEventBtn" class="btn">Inject Test Event</button>
+        <a class="nav-link" href="/index.html">Simulation Benchmark</a>
+        <button id="endShiftBtn" class="btn btn-ghost">End Shift</button>
+      </div>
+    </header>
+
+    <main class="cc-layout">
+      <section class="panel side-panel">
+        <h2>Nurses</h2>
+        <div id="ccNurses" class="nurses"></div>
+        <h2 class="stats-heading">Queue</h2>
+        <div id="ccQueue"></div>
+        <h2 class="stats-heading">Totals</h2>
+        <div id="ccTotals" class="stats"></div>
+      </section>
+
+      <section class="panel map-panel">
+        <h2>Floor</h2>
+        <div class="floor" id="ccFloor"></div>
+        <div class="legend">
+          <span><i class="dot sev-low"></i>1</span>
+          <span><i class="dot sev-mid"></i>2-4</span>
+          <span><i class="dot sev-high"></i>5-7</span>
+          <span><i class="dot sev-crit"></i>8-10</span>
+          <span><i class="dot nurse-dot-legend"></i>nurse</span>
+        </div>
+      </section>
+
+      <section class="panel events-panel">
+        <h2>Incoming Events</h2>
+        <div id="ccEvents"></div>
+      </section>
+    </main>
+  </section>
+
+  <!-- ============ NURSE POV ============ -->
+  <section id="povView" class="pov-view" hidden>
+    <div class="pov-card">
+      <button id="povBackBtn" class="btn btn-ghost" style="align-self:flex-start;">&larr; Command Center</button>
+      <div>
+        <h1 id="povName">Nurse</h1>
+        <div class="pov-role" id="povRole">RN</div>
+      </div>
+
+      <div class="panel">
+        <h2>Current Task</h2>
+        <div id="povNoTask" class="nurse-idle">No task assigned — waiting for Sentinel</div>
+
+        <div id="povTask" class="pov-task" hidden>
+          <div class="pov-room" id="povRoom">Room —</div>
+          <div class="pov-desc" id="povDesc"></div>
+          <div class="pov-grade" id="povGrade"></div>
+          <div class="pov-goal" id="povGoal"></div>
+
+          <button id="povStartBtn" class="btn btn-accent">START</button>
+
+          <div id="povElapsedWrap" hidden>
+            <div>Elapsed: <span class="pov-elapsed" id="povElapsed">00:00</span></div>
+            <button id="povDoneBtn" class="btn btn-accent">DONE</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="povUpNext" class="up-next" hidden>
+        <div class="up-next-heading">Up Next</div>
+        <div id="povUpNextBody"></div>
+      </div>
+    </div>
+  </section>
+
+  <script src="product.js"></script>
+</body>
+</html>
