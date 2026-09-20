@@ -11,9 +11,9 @@
   <!-- ============ LOGIN ============ -->
   <section id="loginView" class="auth-view">
     <div class="auth-card">
-      <div class="brand-mark">&#9679;</div>
+      <div class="brand-mark"></div>
       <h1>SENTINEL</h1>
-      <label>Username <input id="loginUser" type="text" value="coordinator"></label>
+      <label>Your name <input id="loginUser" type="text" placeholder="e.g. Jordan Ellis" value="Jordan Ellis"></label>
       <label>Password <input id="loginPass" type="password" value="••••••••"></label>
       <button id="loginBtn" class="btn btn-accent">LOGIN</button>
     </div>
@@ -38,40 +38,56 @@
   <section id="commandView" class="command-view" hidden>
     <header class="topbar">
       <div class="brand">
-        <span class="brand-mark">&#9679;</span>
+        <span class="brand-mark" aria-hidden="true"></span>
         <div>
           <h1>SENTINEL</h1>
           <p class="subtitle" id="shiftSubtitle">Command Center</p>
         </div>
       </div>
-      <div class="controls">
-        <span class="field"><span>Mode</span>
-          <button id="modeToggleBtn" class="btn btn-accent">AUTO</button>
-        </span>
-        <button id="injectEventBtn" class="btn">Inject Test Event</button>
-        <a class="nav-link" href="/index.html">Simulation Benchmark</a>
-        <button id="endShiftBtn" class="btn btn-ghost">End Shift</button>
+      <div class="header-right">
+        <div class="controls">
+          <span class="field"><span>Mode</span>
+            <button id="modeToggleBtn" class="btn btn-accent">AUTO</button>
+          </span>
+          <button id="injectEventBtn" class="btn">Inject Test Event</button>
+          <a class="nav-link" href="/index.html">Simulation Benchmark</a>
+          <button id="endShiftBtn" class="btn btn-ghost">End Shift</button>
+        </div>
+        <div class="header-user">
+          <span class="header-user-name" id="headerDoctorName">Dr. Coordinator</span>
+          <span class="header-org">MIT</span>
+        </div>
       </div>
     </header>
 
     <main class="cc-layout">
-      <section class="panel side-panel">
-        <h2>Nurses</h2>
-        <div id="ccNurses" class="nurses"></div>
-        <h2 class="stats-heading">Queue</h2>
-        <div id="ccQueue"></div>
-        <h2 class="stats-heading">Totals</h2>
-        <div id="ccTotals" class="stats"></div>
-      </section>
+      <div class="summary-row" id="ccSummaryRow">
+        <div class="summary-card">
+          <div class="summary-label">Active Incidents</div>
+          <div class="summary-value" id="summaryIncidents">0</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Available Nurses</div>
+          <div class="summary-value" id="summaryNurses">0 / 0</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Queue</div>
+          <div class="summary-value" id="summaryQueue">0</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Completed</div>
+          <div class="summary-value" id="summaryCompleted">0</div>
+        </div>
+      </div>
 
       <section class="panel map-panel">
         <h2>Floor</h2>
         <div class="floor" id="ccFloor"></div>
         <div class="legend">
-          <span><i class="dot sev-low"></i>1</span>
-          <span><i class="dot sev-mid"></i>2-4</span>
-          <span><i class="dot sev-high"></i>5-7</span>
-          <span><i class="dot sev-crit"></i>8-10</span>
+          <span><i class="dot sev-low"></i>1 Normal</span>
+          <span><i class="dot sev-mid"></i>2-4 Monitor</span>
+          <span><i class="dot sev-high"></i>5-7 Attention</span>
+          <span><i class="dot sev-crit"></i>8-10 Critical</span>
           <span><i class="dot nurse-dot-legend"></i>nurse</span>
         </div>
       </section>
@@ -80,44 +96,74 @@
         <h2>Incoming Events</h2>
         <div id="ccEvents"></div>
       </section>
+
+      <div class="side-col">
+        <section class="panel side-panel">
+          <h2>Nurses</h2>
+          <div id="ccNurses" class="nurses"></div>
+        </section>
+
+        <section class="panel queue-panel">
+          <h2>Queue</h2>
+          <div id="ccQueue"></div>
+        </section>
+      </div>
+
+      <!-- Kept in the DOM (not deleted) so existing totals rendering keeps working -
+           the numbers now live in the summary cards above, so this is redundant and hidden. -->
+      <div hidden>
+        <h2 class="stats-heading">Totals</h2>
+        <div id="ccTotals" class="stats"></div>
+      </div>
     </main>
   </section>
 
   <!-- ============ NURSE POV ============ -->
+  <!-- Styled to look like what the nurse would actually see on a wrist
+       device (an Apple-Watch-style face) - same elements/IDs as before,
+       just presented differently. -->
   <section id="povView" class="pov-view" hidden>
-    <div class="pov-card">
-      <button id="povBackBtn" class="btn btn-ghost" style="align-self:flex-start;">&larr; Command Center</button>
-      <div>
-        <h1 id="povName">Nurse</h1>
-        <div class="pov-role" id="povRole">RN</div>
-      </div>
+    <div class="pov-wrap">
+      <button id="povBackBtn" class="btn btn-ghost pov-back">&larr; Command Center</button>
 
-      <div class="panel">
-        <h2>Current Task</h2>
-        <div id="povNoTask" class="nurse-idle">No task assigned — waiting for Sentinel</div>
+      <div class="watch-frame">
+        <div class="watch-crown" aria-hidden="true"></div>
+        <div class="watch-screen">
+          <div class="watch-header">
+            <h1 id="povName">Nurse</h1>
+            <div class="pov-role" id="povRole">RN</div>
+          </div>
 
-        <div id="povTask" class="pov-task" hidden>
-          <div class="pov-room" id="povRoom">Room —</div>
-          <div class="pov-desc" id="povDesc"></div>
-          <div class="pov-grade" id="povGrade"></div>
-          <div class="pov-goal" id="povGoal"></div>
+          <div class="watch-body">
+            <div class="watch-section-label">Current Task</div>
+            <div id="povNoTask" class="nurse-idle">No task assigned — waiting for Sentinel</div>
 
-          <button id="povStartBtn" class="btn btn-accent">START</button>
+            <div id="povTask" class="pov-task" hidden>
+              <div class="pov-room" id="povRoom">Room —</div>
+              <div class="pov-desc" id="povDesc"></div>
+              <div class="pov-grade" id="povGrade"></div>
+              <div class="pov-goal" id="povGoal"></div>
 
-          <div id="povElapsedWrap" hidden>
-            <div>Elapsed: <span class="pov-elapsed" id="povElapsed">00:00</span></div>
-            <button id="povDoneBtn" class="btn btn-accent">DONE</button>
+              <button id="povStartBtn" class="btn btn-accent">START</button>
+
+              <div id="povElapsedWrap" hidden>
+                <div class="pov-elapsed-label">Elapsed</div>
+                <div class="pov-elapsed" id="povElapsed">00:00</div>
+                <button id="povDoneBtn" class="btn btn-accent">DONE</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="povUpNext" class="up-next" hidden>
+            <div class="up-next-heading">Up Next</div>
+            <div id="povUpNextBody"></div>
           </div>
         </div>
-      </div>
-
-      <div id="povUpNext" class="up-next" hidden>
-        <div class="up-next-heading">Up Next</div>
-        <div id="povUpNextBody"></div>
       </div>
     </div>
   </section>
 
   <script src="product.js"></script>
+  <script src="grid-fit.js"></script>
 </body>
 </html>

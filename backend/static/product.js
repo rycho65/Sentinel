@@ -9,6 +9,7 @@ const selectedGrades = {};   // eventId -> "GREEN"|"YELLOW"|"ORANGE"|"RED", pick
 
 let pollTimer = null;
 let povTimer = null;
+let queueRenderLocked = false;
 
 // ---- element refs ----
 
@@ -20,6 +21,7 @@ const views = {
 };
 
 const loginBtn = document.getElementById("loginBtn");
+const loginUser = document.getElementById("loginUser");
 const setupBeds = document.getElementById("setupBeds");
 const setupNurseCount = document.getElementById("setupNurseCount");
 const nurseRows = document.getElementById("nurseRows");
@@ -34,6 +36,11 @@ const ccTotals = document.getElementById("ccTotals");
 const ccFloor = document.getElementById("ccFloor");
 const ccEvents = document.getElementById("ccEvents");
 const ccQueue = document.getElementById("ccQueue");
+const headerDoctorName = document.getElementById("headerDoctorName");
+const summaryIncidents = document.getElementById("summaryIncidents");
+const summaryNurses = document.getElementById("summaryNurses");
+const summaryQueue = document.getElementById("summaryQueue");
+const summaryCompleted = document.getElementById("summaryCompleted");
 
 const povBackBtn = document.getElementById("povBackBtn");
 const povName = document.getElementById("povName");
@@ -83,6 +90,7 @@ function showView(name) {
 
 loginBtn.addEventListener("click", () => {
   // Hackathon-level auth: any credentials advance. Nothing is sent to the backend.
+  headerDoctorName.textContent = `Dr. ${loginUser.value.trim() || "Coordinator"}`;
   showView("setup");
   renderNurseRows();
 });
@@ -264,6 +272,17 @@ async function confirmEvent(event) {
   refreshState();
 }
 
+// Populates the summary-card row from data the app already computes each
+// refresh (state.nurses / state.queue / the same totals renderTotals uses) -
+// no new backend metrics, just a compact restatement for the top of the page.
+function renderSummaryCards(state) {
+  const available = state.nurses.filter(n => n.status === "available").length;
+  summaryIncidents.textContent = state.active_incidents_total;
+  summaryNurses.textContent = `${available} / ${state.nurses.length}`;
+  summaryQueue.textContent = state.queue.length;
+  summaryCompleted.textContent = state.completed_count;
+}
+
 function renderTotals(state) {
   ccTotals.innerHTML = `
     <div>Raw pings: <b>${state.raw_pings_total}</b></div>
@@ -274,21 +293,26 @@ function renderTotals(state) {
 }
 
 // Unassigned waiting tasks. Auto Mode: Sentinel claims these itself via
-// tick() - nothing for the coordinator to do here. Manual Mode: these sit
-// untouched until the coordinator explicitly assigns a nurse - that's the
-// whole point of Manual Mode, full control over who goes where.
+// tick() - nothing for the coordinator to do here, so the same cards render
+// without assignment controls. Manual Mode: these sit untouched until the
+// coordinator explicitly assigns a nurse - that's the whole point of Manual
+// Mode, full control over who goes where.
 function renderQueue(state) {
   const unclaimed = state.queue.filter(t => !t.nurse_id);
 
-  if (mode === "auto") {
-    ccQueue.innerHTML = unclaimed.length
-      ? `<div class="nurse-idle">${unclaimed.length} waiting &mdash; Sentinel auto-assigns</div>`
-      : `<div class="nurse-idle">Queue empty</div>`;
+  if (!unclaimed.length) {
+    ccQueue.innerHTML = `<div class="nurse-idle">Queue empty</div>`;
     return;
   }
 
-  if (!unclaimed.length) {
-    ccQueue.innerHTML = `<div class="nurse-idle">Queue empty</div>`;
+  if (mode === "auto") {
+    ccQueue.innerHTML = unclaimed.map(t => `
+      <div class="event-card">
+        <div class="event-room">${GRADE_EMOJI[t.grade]} ROOM ${t.room}</div>
+        <div class="event-vitals">${t.description}</div>
+        <div class="event-note">Sentinel is assigning a nurse&hellip;</div>
+      </div>
+    `).join("");
     return;
   }
 
@@ -315,6 +339,21 @@ function renderQueue(state) {
       refreshState();
     });
   });
+
+  // The 2s poll below rebuilds this whole panel's innerHTML, which - if it
+  // fires while a native <select> dropdown is open - tears the element out
+  // from under the open popup and dismisses it before a nurse can be picked.
+  // Suppress rebuilds while a select actually has focus. Don't force an
+  // immediate rebuild on blur either: blur fires the instant the user's
+  // mouse moves focus onto the ASSIGN button (before its click lands), and
+  // on localhost the refresh can resolve and rebuild the DOM in that same
+  // few-millisecond gap, yanking the button out from under the click. Just
+  // release the lock and let the next poll tick (or the assign click's own
+  // refreshState() call once it posts) pick up the rebuild.
+  ccQueue.querySelectorAll(".nurse-select").forEach(select => {
+    select.addEventListener("focus", () => { queueRenderLocked = true; });
+    select.addEventListener("blur", () => { queueRenderLocked = false; });
+  });
 }
 
 async function refreshState() {
@@ -326,8 +365,9 @@ async function refreshState() {
   renderNurses(state.nurses);
   renderFloor(state.queue);
   renderEvents(state.pending_events);
-  renderQueue(state);
+  if (!queueRenderLocked) renderQueue(state);
   renderTotals(state);
+  renderSummaryCards(state);
 }
 
 function startPolling() {
